@@ -1,0 +1,8 @@
+Add Microsoft.EntityFrameworkCore, Microsoft.AspNetCore.Identity.EntityFrameworkCore, Microsoft.EntityFrameworkCore.SqlServer to your project.
+
+The model that represents the identity database is the IdentityDbContext. This is a pre-made context that comes from Microsoft.AspNetCore.Identity.EntityFrameworkCore. 
+
+### Dependency Injections
+
+IndentityDbContext by invoking AddDbContext. You should also provide the connection string here.
+UserManager and SignManager are done by invoking AddIdentity.
