@@ -51,4 +51,3 @@ Add the middlewares:
 app.UseAuthentication();
 app.UseAuthorization();
 ```
-
