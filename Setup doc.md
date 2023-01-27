@@ -28,14 +28,21 @@ builder.Services.Configure<IdentityOptions>(options =>
 });
 ```
 
-#### Configuring cookie validation
+#### Security stamp
+
+The security stamp track changes made to the profile such as password changes. When you change a password, a new security stamp is generated. This would invalidate any cookies that has the old stamp. However, you may notice that users who are already signed in before the password change are still signed in. This is because security stamps are validated at a set interval. The default is 30 minutes. This can be changed via:
 
 ```
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
-	options.ValidationInterval = new(1); // Re-validate the cookie after 1 minute.
+	options.ValidationInterval = new(0, 2, 0);
 });
 ```
+
+https://stackoverflow.com/questions/39659876/asp-net-identity-reset-cookies-and-session-on-iis-recycle-restart
+
+Recommended by the top reply to not have the timmestamp to be below 2 minutes.
+Calling `UpdateSecurityStampAsync` isn't enough as even though the security stamp has been updated, it isn't validated on every request until the interval has passed.
 
 ### Authorization
 
@@ -53,3 +60,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 ```
 `UseAuthentication` is needed because authorize needs to know if the user is authenticated. `UseAuthorization` is self-explanatory.
+
+### Cookie invalidation interval
+
+To change when cookies are validated:
+
+```
+
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+	options.ValidationInterval = new(1);
+});
+```
