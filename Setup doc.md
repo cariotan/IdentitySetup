@@ -14,6 +14,45 @@ The model that represents the identity database is the `IdentityDbContext`. This
 
 Now you need to add `IdentityDbContext`, `SignInManager `and `UserManager` to services in `program.cs` so it can be used for dependency injection. `IdentityDbContext` is added using `AddDbContext` and both `SignInManager` and `UserManager` is added using `AddIdentity`.
 
+#### IdentityDbContext
+
+You cannot perform a database migration with IdentityDbContext as it currently resides in another assembly. So create a new class that inherits from IdentityDbContext. Next will depend on whether you are setting up the sql connection from services are in the class itself. If in the class itself, add this method:
+```
+	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+	{
+		using StreamReader reader = new("config.txt");
+		optionsBuilder.UseSqlServer(reader.ReadLine() ?? throw new InvalidOperationException());
+	}
+```
+otherwise, 
+```
+	public IdentityPracticeContext(DbContextOptions<IdentityPracticeContext> options)
+			: base(options)
+		{
+
+		}
+```
+
+To setup the string connection, add the below to program.cs
+
+```
+builder.Services.AddDbContext<IdentityDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityPractice")));
+```
+
+In appsettings.json
+
+```
+  "ConnectionStrings": {
+        "IdentityPractice": "server=.\\SQLEXPRESS;database=IdentityPractice;Trusted_Connection=true"
+    }
+```
+
+Next, append AddEntityFrameworkStores<ChildIdentityDbClassName>();
+
+That is needed to register the necessary services that are required for authentication and authorization services.
+
+After that, then you can perform the first migration to create the necessary tables in the sql database.
+
 #### Configuring the identity system
 Example of password requirements configuration:
 ```
@@ -41,7 +80,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 
 https://stackoverflow.com/questions/39659876/asp-net-identity-reset-cookies-and-session-on-iis-recycle-restart
 
-Recommended by the top reply to not have the timmestamp to be below 2 minutes.
+Recommended by the top reply to not have the timestamp to be below 2 minutes.
 Calling `UpdateSecurityStampAsync` isn't enough as even though the security stamp has been updated, it isn't validated on every request until the interval has passed.
 
 ### Authorization
@@ -72,3 +111,10 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 	options.ValidationInterval = new(1);
 });
 ```
+
+### Two-Factor Authentication
+
+singinmanager result requiretwofactor doesnt return even if two factor is enabled.
+but idenittyuser.twofactor ebalbned does.
+
+RefreshSignInAsync
