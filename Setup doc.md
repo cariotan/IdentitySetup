@@ -1,4 +1,4 @@
-
+# Not for Blazor Server due incompatibility of SignInManager which utilizes cookies.
 
 ### Authentication
 
@@ -9,19 +9,21 @@ Add the following nuget packages to your project:
 Microsoft.EntityFrameworkCore
 Microsoft.AspNetCore.Identity.EntityFrameworkCore
 Microsoft.EntityFrameworkCore.SqlServer
+Microsoft.EntityFrameworkCore.Design - this is required for ef tools to work.
 ```
+Make sure the packages uses the same versions.
+
 The model that represents the identity database is the `IdentityDbContext`. This is a pre-made context that comes from `Microsoft.AspNetCore.Identity.EntityFrameworkCore`.
 
-Now you need to add `IdentityDbContext`, `SignInManager `and `UserManager` to services in `program.cs` so it can be used for dependency injection. `IdentityDbContext` is added using `AddDbContext` and both `SignInManager` and `UserManager` is added using `AddIdentity`.
+Now you need to add `IdentityDbContext`, `SignInManager `and `UserManager` to services in `program.cs` so it can be used for dependency injection. Both `SignInManager` and `UserManager` is added using `AddIdentity`. Read below to setup `IdentityDbContext`.
 
 #### IdentityDbContext
 
-You cannot perform a database migration with IdentityDbContext as it currently resides in another assembly. So create a new class that inherits from IdentityDbContext. Next will depend on whether you are setting up the sql connection from services are in the class itself. If in the class itself, add this method:
+You cannot perform a database migration with `IdentityDbContext` as it currently resides in another assembly. So create a new class that inherits from `IdentityDbContext`. Next will depend on whether you are setting up the sql connection from services are in the class itself. If in the class itself, add this method:
 ```
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
-		using StreamReader reader = new("config.txt");
-		optionsBuilder.UseSqlServer(reader.ReadLine() ?? throw new InvalidOperationException());
+		optionsBuilder.UseSqlServer({connectionString});
 	}
 ```
 otherwise, 
@@ -47,11 +49,11 @@ In appsettings.json
     }
 ```
 
-Next, append AddEntityFrameworkStores<ChildIdentityDbClassName>();
+Next, append `AddEntityFrameworkStores<ChildIdentityDbClassName>();`.
 
 That is needed to register the necessary services that are required for authentication and authorization services.
 
-After that, then you can perform the first migration to create the necessary tables in the sql database.
+After that, then you can perform the first migration to create the necessary tables in the sql database. Without `AddEntityFrameworkStores`, the migration wouldn't know what structure the authentication and authorization system will be as you can be using a custom structor or third party external providers.
 
 #### Configuring the identity system
 Example of password requirements configuration:
@@ -85,15 +87,18 @@ Calling `UpdateSecurityStampAsync` isn't enough as even though the security stam
 
 ### Authorization
 
-Use `AuthorizeView` component to control the UI based on the authentication state. The state of the authentication is obtained from `AuthenticationStateProvider`. `AuthorizeView` obtains it from a cascading parameter: `CascadingAuthenticationState`.
-
+Use `AuthorizeView` component to control the UI based on the authentication state. `AuthorizeView` obtains it from a cascading parameter: `CascadingAuthenticationState`. The state of the authentication is obtained from `AuthenticationStateProvider`.
 The above components are in the nuget package: `Microsoft.AspNetCore.Components.Authorization`, so add that to your project. Add `AddAuthorizationCore` to services to inject required services to `AuthorizeView`. An implementation of `AuthenticationStateProvider` will need to be created and added to services.
 
 #### `AuthenticationStateProvider`
-As mentioned previously, the state of the authentication that `AuthorizeView` uses is provided by `AuthenticationStateProvider`.  A concrete implementation of that class will need to be provided. It contains a single method that needs implementation - `GetAuthenticationStateAsync`. The method return a `AuthenticationState` object that contains the `ClaimsPrincipal` that will be used to determine the state of the authentication. The primary logic of `GetAuthenticationStateAsync` will be to create the `ClaimsPrincipal` and return it inside a `AuthenticationState` object. `ClaimsPrincipal` are made up of one or more `ClaimsIdentity` which in turn is made up of one or more `Claim`. It would be considered au tehnticated if `AuthenticationType` property of `ClaimsIdenity` is a non-null value and that claims exist that matches the existing criteria of `AuthorizeView`. In addition, `AuthenticationStateChanged` event will need to be invokes whenever the state of authentication changes and the view needs to be updated immediately. To invoke it, `NotifyAuthenticationStateChanged` will need to be called. The method is a protected method so a public wrapped will need to be written and calling that instead to notify any changes in the authentication state.
+As mentioned previously, the state of the authentication that `AuthorizeView` uses is provided by `AuthenticationStateProvider`.  A concrete implementation of that class will need to be provided. It contains a single method that needs implementation - `GetAuthenticationStateAsync`. The method return a `AuthenticationState` object that contains the `ClaimsPrincipal` that will be used to determine the state of the authentication. The primary logic of `GetAuthenticationStateAsync` will be to create the `ClaimsPrincipal` and return it inside a `AuthenticationState` object. `ClaimsPrincipal` are made up of one or more `ClaimsIdentity` which in turn is made up of one or more `Claim`. It would be considered autehnticated if `AuthenticationType` property of `ClaimsIdenity` is a non-null value and that claims exist that matches the existing criteria of `AuthorizeView`.
+
+In addition, `AuthenticationStateChanged` event will need to be invokes whenever the state of authentication changes and the view needs to be updated immediately. To invoke it, `NotifyAuthenticationStateChanged` will need to be called. The method is a protected method so a public wrapper will need to be written and calling that instead to notify any changes in the authentication state.
+
+Whem implementing `GetAuthenticationStateAsync()`, the set of claims can be obtained in the server HttpContext.User.Claims. The `ClaimIdentity` that you pass to the `ClaimsPrincipal` will require the `authenticationType` to be specified. 
 
 #### `[Authorize]` attribute
-Add the middlewares:
+Add the middlewares after app.Routing:
 ```
 app.UseAuthentication();
 app.UseAuthorization();
@@ -115,6 +120,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 ### Two-Factor Authentication
 
 singinmanager result requiretwofactor doesnt return even if two factor is enabled.
-but idenittyuser.twofactor ebalbned does.
 
 RefreshSignInAsync
+
+lockedout 
