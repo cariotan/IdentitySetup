@@ -119,8 +119,14 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 
 ### Two-Factor Authentication
 
-singinmanager result requiretwofactor doesnt return even if two factor is enabled.
+1. Create a class that implements the `IUserTwoFactorTokenProvider<IdentityUser>` interface. This class will provide the implementation for generating and validating 2FA tokens for users.
 
-RefreshSignInAsync
+2. Add the token provider implementation to the identity builder service by using the `AddTokenProvider` method. Provide a name for the token provider during registration.
 
-lockedout 
+3. Once the token provider is registered, you can enable 2FA for a user by calling `userManager.SetTwoFactorEnabledAsync(user, true);`. This method will set the 2FA flag for the specified user.
+
+4. When calling the `signInManager.PasswordSignInAsync` method, check the returned result to determine if 2FA is required for the user. If the token provider is not provided, this method will always return false.
+
+5. To generate a 2FA code for the user, call `userManager.GenerateTwoFactorTokenAsync`. This will generate a code that the user can use for authentication.
+
+6. If the user has entered the correct email and password, you can proceed to log them in by calling `signInManager.TwoFactorSignInAsync`. This method will validate the 2FA code provided by the user and sign them in if it's correct.
